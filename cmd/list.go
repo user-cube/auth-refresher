@@ -26,7 +26,11 @@ var listCmd = &cobra.Command{
 			ui.PrintError("Failed to open config file", err, true)
 			return
 		}
-		defer file.Close()
+		defer func() {
+			if err := file.Close(); err != nil {
+				ui.PrintError("Failed to close file", err, true)
+			}
+		}()
 
 		decoder := yaml.NewDecoder(file)
 		if err := decoder.Decode(&config); err != nil {
@@ -49,10 +53,10 @@ var listCmd = &cobra.Command{
 		// Use sortedKeys to iterate and display registries
 		t := table.NewWriter()
 		t.SetOutputMirror(os.Stdout)
-		t.AppendHeader(table.Row{"Name", "Type", "URL", "Region"})
+		t.AppendHeader(table.Row{"Name", "Type", "URL", "Region", "Last Login", "Last Logout"})
 		for _, key := range sortedKeys {
 			registry := config.Registries[key]
-			t.AppendRow(table.Row{registry.Name, registry.Type, registry.URL, registry.Region})
+			t.AppendRow(table.Row{registry.Name, registry.Type, registry.URL, registry.Region, registry.LastLogin, registry.LastLogout})
 		}
 
 		t.Render()

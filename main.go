@@ -1,6 +1,6 @@
 package main
 
-import "github.com/user-cube/gocli-template/cmd"
+import "github.com/user-cube/auth-refresher/cmd"
 
 func main() {
 	cmd.Execute()

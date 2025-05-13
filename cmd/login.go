@@ -33,7 +33,11 @@ var loginCmd = &cobra.Command{
 			ui.PrintError("Failed to open config file", err, true)
 			return err
 		}
-		defer file.Close()
+		defer func() {
+			if err := file.Close(); err != nil {
+				ui.PrintError("Failed to close file", err, true)
+			}
+		}()
 
 		// Call LoginToRegistry without spinner
 		err = auth.LoginToRegistry(ctx, configPath)

@@ -25,9 +25,9 @@ go.work.sum
 .env
 
 # Binaries
-$PROJECT_NAME
+auth-refresher
 dist
 
 # Demo
-demo/$PROJECT_NAME.cast
-demo/$PROJECT_NAME.gif
+demo/auth-refresher.cast
+demo/auth-refresher.gif
