@@ -57,6 +57,15 @@ var logoutCmd = &cobra.Command{
 			}
 		}
 
+		// Perform Helm logout for Helm registries
+		if registry.Type == "helm" {
+			logoutCmd := exec.Command("helm", "registry", "logout", registry.URL)
+			if err := logoutCmd.Run(); err != nil {
+				ui.PrintError("Failed to perform Helm logout", err, true)
+				return
+			}
+		}
+
 		// Only update the `LastLogout` field with the current date
 		registry.LastLogout = time.Now().Format("2006-01-02 15:04:05") // Set the last logout date
 		config.Registries[selected] = registry                         // Update the registry entry in the configuration
