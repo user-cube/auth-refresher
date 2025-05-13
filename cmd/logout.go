@@ -22,7 +22,11 @@ var logoutCmd = &cobra.Command{
 			ui.PrintError("Failed to open config file", err, true)
 			return
 		}
-		defer file.Close()
+		defer func() {
+			if err := file.Close(); err != nil {
+				ui.PrintError("Failed to close file", err, true)
+			}
+		}()
 
 		var config auth.Config
 		decoder := yaml.NewDecoder(file)
@@ -76,10 +80,18 @@ var logoutCmd = &cobra.Command{
 			ui.PrintError("Failed to open config file for writing", err, true)
 			return
 		}
-		defer file.Close()
+		defer func() {
+			if err := file.Close(); err != nil {
+				ui.PrintError("Failed to close file", err, true)
+			}
+		}()
 
 		encoder := yaml.NewEncoder(file)
-		defer encoder.Close()
+		defer func() {
+			if err := encoder.Close(); err != nil {
+				ui.PrintError("Failed to close encoder", err, true)
+			}
+		}()
 		if err := encoder.Encode(&config); err != nil {
 			ui.PrintError("Failed to write updated config", err, true)
 			return

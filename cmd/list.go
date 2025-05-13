@@ -26,7 +26,11 @@ var listCmd = &cobra.Command{
 			ui.PrintError("Failed to open config file", err, true)
 			return
 		}
-		defer file.Close()
+		defer func() {
+			if err := file.Close(); err != nil {
+				ui.PrintError("Failed to close file", err, true)
+			}
+		}()
 
 		decoder := yaml.NewDecoder(file)
 		if err := decoder.Decode(&config); err != nil {

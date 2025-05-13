@@ -34,7 +34,11 @@ var addCmd = &cobra.Command{
 			ui.PrintError("Failed to open config file", err, true)
 			return
 		}
-		defer file.Close()
+		defer func() {
+			if err := file.Close(); err != nil {
+				ui.PrintError("Failed to close file", err, true)
+			}
+		}()
 
 		var config auth.Config
 		decoder := yaml.NewDecoder(file)
@@ -94,8 +98,14 @@ var addCmd = &cobra.Command{
 			}
 		}
 
-		file.Truncate(0)
-		file.Seek(0, 0)
+		if err := file.Truncate(0); err != nil {
+			ui.PrintError("Failed to truncate file", err, true)
+			return
+		}
+		if _, err := file.Seek(0, 0); err != nil {
+			ui.PrintError("Failed to seek file", err, true)
+			return
+		}
 		encoder := yaml.NewEncoder(file)
 		if err := encoder.Encode(&config); err != nil {
 			ui.PrintError("Failed to save config file", err, true)

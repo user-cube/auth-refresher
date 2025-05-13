@@ -42,13 +42,6 @@ func NewColors() *Colors {
 	}
 }
 
-// Section prints a section header with a newline before and after
-func Section(title string) {
-	Normal("\n")
-	color.New(color.FgCyan, color.Bold).Printf("=== %s ===\n", title)
-	Normal("\n")
-}
-
 // PrintKeyValue prints a key-value pair with the key highlighted
 func PrintKeyValue(key, value string) {
 	Normal("  %s: %s\n", key, value)

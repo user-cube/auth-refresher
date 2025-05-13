@@ -36,7 +36,11 @@ func LoadConfig(filePath string) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open config file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			fmt.Println("Error closing file:", err)
+		}
+	}()
 
 	var config Config
 	decoder := yaml.NewDecoder(file)
@@ -82,7 +86,11 @@ func LoginToRegistry(ctx context.Context, configPath string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			fmt.Println("Error closing file:", err)
+		}
+	}()
 
 	var config Config
 	decoder := yaml.NewDecoder(file)
@@ -148,37 +156,34 @@ func LoginToRegistry(ctx context.Context, configPath string) error {
 
 	// Start the spinner after gathering necessary inputs
 	err = ui.WithSpinner("Logging in to the selected registry", func() error {
-		if registry.Type == "docker" {
+		switch registry.Type {
+		case "docker":
 			loginCmd := exec.CommandContext(ctx, "docker", "login", "--username", registry.Username, "--password", registry.Password, registry.URL)
 			if err := loginCmd.Run(); err != nil {
 				return err
 			}
-		} else if registry.Type == "aws" {
+		case "aws":
 			cmd := exec.CommandContext(ctx, "aws", "ecr", "get-login-password", "--region", registry.Region)
 			output, err := cmd.Output()
 			if err != nil {
 				return err
 			}
-
 			loginCmd := exec.CommandContext(ctx, "docker", "login", "--username", "AWS", "--password-stdin", registry.URL)
 			loginCmd.Stdin = bytes.NewReader(output)
 			if err := loginCmd.Run(); err != nil {
 				return err
 			}
-		} else if registry.Type == "helm" {
+		case "helm":
 			cmd := exec.CommandContext(ctx, "aws", "ecr", "get-login-password", "--region", registry.Region)
 			output, err := cmd.Output()
 			if err != nil {
 				return err
 			}
-
 			loginCmd := exec.CommandContext(ctx, "helm", "registry", "login", registry.URL, "--username", "AWS", "--password", string(output))
 			if err := loginCmd.Run(); err != nil {
 				return err
 			}
 		}
-		ui.ClearSpinner()
-		ui.PrintSuccess("Successfully logged in to registry:", registry.Name)
 		return nil
 	}, false)
 	if err != nil {
@@ -194,10 +199,18 @@ func LoginToRegistry(ctx context.Context, configPath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open config file for writing: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			fmt.Println("Error closing file:", err)
+		}
+	}()
 
 	encoder := yaml.NewEncoder(file)
-	defer encoder.Close()
+	defer func() {
+		if err := encoder.Close(); err != nil {
+			fmt.Println("Error closing encoder:", err)
+		}
+	}()
 	if err := encoder.Encode(&config); err != nil {
 		return fmt.Errorf("failed to write updated config: %w", err)
 	}
