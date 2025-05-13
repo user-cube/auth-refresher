@@ -1,0 +1,68 @@
+# .github/workflows/release.yml
+name: goreleaser
+
+on:
+  push:
+    # run only against tags
+    tags:
+      - "*"
+
+permissions:
+  contents: write
+  packages: write
+  issues: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      
+      - name: Extract version from tag
+        id: extract_version
+        run: |
+          # Extract version from tag (remove 'v' prefix if present)
+          TAG=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG#v}
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "Using version: ${VERSION}"
+      
+      - name: Set build variables
+        id: build_vars
+        run: |
+          # Get the short commit hash
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          echo "COMMIT_SHA=${COMMIT_SHA}" >> $GITHUB_ENV
+          echo "Using commit: ${COMMIT_SHA}"
+
+          # Set build date in ISO 8601 format
+          BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "BUILD_DATE=${BUILD_DATE}" >> $GITHUB_ENV
+          echo "Using build date: ${BUILD_DATE}"
+      
+      # More assembly might be required: Docker logins, GPG, etc.
+      # It all depends on your needs.
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          # either 'goreleaser' (default) or 'goreleaser-pro'
+          distribution: goreleaser
+          # 'latest', 'nightly', or a semver
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Pass the build variables to GoReleaser
+          VERSION: ${{ env.VERSION }}
+          GIT_COMMIT: ${{ env.COMMIT_SHA }}
+          BUILD_DATE: ${{ env.BUILD_DATE }}
+          # Your GoReleaser Pro key, if you are using the 'goreleaser-pro' distribution
+          # GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
