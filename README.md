@@ -47,6 +47,24 @@ Use the `login` command to log in to a registry:
 
 Follow the prompts to select a registry and log in.
 
+### Logout from a Registry
+
+Use the `logout` command to log out from a registry:
+```bash
+./auth-refresher logout
+```
+
+Follow the prompts to select a registry and log out. This command supports Docker, AWS ECR, and Helm registries.
+
+### List Registries
+
+Use the `list` command to view all configured registries:
+```bash
+./auth-refresher list
+```
+
+The output includes the registry name, type, URL, and timestamps for the last login and logout operations.
+
 ### Example Helm Login Command
 
 For Helm registries, the tool executes the following commands internally:
@@ -69,7 +87,6 @@ helm registry login \
 The tool uses a YAML configuration file located at `~/.auth-refresher/config.yaml`. Example:
 ```yaml
 last_used_registry: my-docker-registry
-name: My Registries
 registries:
   my-docker-registry:
     name: My Docker Registry
@@ -104,7 +121,3 @@ registries:
    ```bash
    go run main.go
    ```
-
-## Demo
-
-![demo](/demo/auth-refresher-demo.gif)
