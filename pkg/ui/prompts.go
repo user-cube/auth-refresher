@@ -1,50 +1,108 @@
 package ui
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/manifoldco/promptui"
 )
 
-// SelectFromList prompts the user to select an item from a list
-func SelectFromList(label string, items []string) (string, error) {
-	prompt := promptui.Select{
-		Label: label,
-		Items: items,
-	}
+// SelectFromList prompts the user to select an item from a list with context support
+func SelectFromList(ctx context.Context, label string, items []string) (string, error) {
+	resultChan := make(chan string, 1)
+	errorChan := make(chan error, 1)
 
-	idx, _, err := prompt.Run()
-	if err != nil {
+	go func() {
+		prompt := promptui.Select{
+			Label: label,
+			Items: items,
+			Templates: &promptui.SelectTemplates{
+				Active:   "▶ {{ . | cyan }}", // Highlight the active selection in cyan
+				Inactive: "  {{ . }}",
+				Selected: "✔ {{ . | green }}", // Show the selected item in green
+			},
+		}
+
+		_, result, err := prompt.Run()
+		if err != nil {
+			if err == promptui.ErrInterrupt {
+				errorChan <- fmt.Errorf("operation cancelled by user")
+				return
+			}
+			errorChan <- err
+			return
+		}
+		resultChan <- result
+	}()
+
+	select {
+	case <-ctx.Done():
+		return "", fmt.Errorf("operation cancelled by user")
+	case result := <-resultChan:
+		return result, nil
+	case err := <-errorChan:
 		return "", err
 	}
-
-	return items[idx], nil
 }
 
-// Confirm prompts the user for a yes/no confirmation
-func Confirm(label string) (bool, error) {
-	prompt := promptui.Prompt{
-		Label:     label,
-		IsConfirm: true,
-	}
+// ConfirmWithContext prompts the user for a yes/no confirmation with context support
+func ConfirmWithContext(ctx context.Context, label string) (bool, error) {
+	resultChan := make(chan bool, 1)
+	errorChan := make(chan error, 1)
 
-	_, err := prompt.Run()
-	if err != nil {
-		// promptui returns an error when the user selects "n"
-		if err == promptui.ErrAbort {
-			return false, nil
+	go func() {
+		prompt := promptui.Prompt{
+			Label:     label,
+			IsConfirm: true,
 		}
+
+		_, err := prompt.Run()
+		if err != nil {
+			if err == promptui.ErrAbort {
+				resultChan <- false
+				return
+			}
+			errorChan <- err
+			return
+		}
+		resultChan <- true
+	}()
+
+	select {
+	case <-ctx.Done():
+		return false, fmt.Errorf("operation cancelled by user")
+	case result := <-resultChan:
+		return result, nil
+	case err := <-errorChan:
 		return false, err
 	}
-
-	return true, nil
 }
 
-// PromptInput prompts the user for text input
-func PromptInput(label string, defaultValue string, validate promptui.ValidateFunc) (string, error) {
-	prompt := promptui.Prompt{
-		Label:    label,
-		Default:  defaultValue,
-		Validate: validate,
-	}
+// PromptInputWithContext prompts the user for text input with context support
+func PromptInputWithContext(ctx context.Context, label string, defaultValue string, validate promptui.ValidateFunc) (string, error) {
+	resultChan := make(chan string, 1)
+	errorChan := make(chan error, 1)
 
-	return prompt.Run()
+	go func() {
+		prompt := promptui.Prompt{
+			Label:    label,
+			Default:  defaultValue,
+			Validate: validate,
+		}
+		result, err := prompt.Run()
+		if err != nil {
+			errorChan <- err
+			return
+		}
+		resultChan <- result
+	}()
+
+	select {
+	case <-ctx.Done():
+		return "", fmt.Errorf("operation cancelled by user")
+	case result := <-resultChan:
+		return result, nil
+	case err := <-errorChan:
+		return "", err
+	}
 }

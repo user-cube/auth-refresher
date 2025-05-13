@@ -63,3 +63,11 @@ func PrintNote(msg string, details ...string) {
 	}
 	fmt.Println()
 }
+
+// PrintBanner prints a formatted banner message
+func PrintBanner(msg string) {
+	colors := NewColors()
+	fmt.Println(colors.Bold(colors.Cyan("==============================")))
+	fmt.Println(colors.Bold(colors.Cyan(msg)))
+	fmt.Println(colors.Bold(colors.Cyan("==============================")))
+}

@@ -49,30 +49,29 @@ func (s *Spinner) Start() {
 	}()
 }
 
-// Stop stops the spinner and clears the line
+// Enhanced `Stop` method to flush output and ensure the spinner's message is fully cleared
 func (s *Spinner) Stop() {
 	if !s.active {
 		return
 	}
 	s.active = false
 	s.done <- true
-	fmt.Print("\r")
-	// Clear the line
-	fmt.Print("\033[K")
+	fmt.Print("\r\033[K") // Clear the line
+	fmt.Println()         // Move to a new line to ensure no overlap
 }
 
-// WithSpinner runs a function with a spinner
-func WithSpinner(message string, fn func() error) error {
+// Added ClearSpinner function to clear spinner output
+// Added \r so the whole line is cleared
+func ClearSpinner() {
+	fmt.Print("\r\033[K") // move to column 0, then erase line
+}
+
+// Updated `WithSpinner` to allow suppressing the default completion message
+func WithSpinner(message string, fn func() error, suppressCompletionMessage bool) error {
 	spinner := NewSpinner(message)
 	spinner.Start()
 	err := fn()
 	spinner.Stop()
-
-	if err != nil {
-		Error("Error: %v\n", err)
-	} else {
-		Success("Done: %s\n", message)
-	}
 
 	return err
 }
