@@ -86,11 +86,6 @@ func LoginToRegistry(ctx context.Context, configPath string) error {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if err := file.Close(); err != nil {
-			fmt.Println("Error closing file:", err)
-		}
-	}()
 
 	var config Config
 	decoder := yaml.NewDecoder(file)
@@ -192,6 +187,7 @@ func LoginToRegistry(ctx context.Context, configPath string) error {
 
 	// Update the `last_used_registry` field in the configuration
 	config.CurrentRegistry = cleanedSelected
+	registry.Password = ""                                        // Clear the password field for security reasons
 	registry.LastLogin = time.Now().Format("2006-01-02 15:04:05") // Update the `LastLogin` field with the current date
 	config.Registries[cleanedSelected] = registry                 // Update the registry entry in the configuration
 

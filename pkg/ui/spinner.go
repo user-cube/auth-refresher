@@ -66,12 +66,15 @@ func ClearSpinner() {
 	fmt.Print("\r\033[K") // move to column 0, then erase line
 }
 
-// Updated `WithSpinner` to allow suppressing the default completion message
+// Ensure success message is displayed after spinner stops
 func WithSpinner(message string, fn func() error, suppressCompletionMessage bool) error {
 	spinner := NewSpinner(message)
 	spinner.Start()
 	err := fn()
 	spinner.Stop()
 
+	if !suppressCompletionMessage && err == nil {
+		fmt.Println("✓", message, "completed successfully!")
+	}
 	return err
 }

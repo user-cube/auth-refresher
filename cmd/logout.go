@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -22,11 +23,6 @@ var logoutCmd = &cobra.Command{
 			ui.PrintError("Failed to open config file", err, true)
 			return
 		}
-		defer func() {
-			if err := file.Close(); err != nil {
-				ui.PrintError("Failed to close file", err, true)
-			}
-		}()
 
 		var config auth.Config
 		decoder := yaml.NewDecoder(file)
@@ -35,11 +31,18 @@ var logoutCmd = &cobra.Command{
 			return
 		}
 
-		// Select a registry to logout
+		// Sort registries by name and then by type
 		keys := make([]string, 0, len(config.Registries))
 		for key := range config.Registries {
 			keys = append(keys, key)
 		}
+		sort.Slice(keys, func(i, j int) bool {
+			if config.Registries[keys[i]].Name == config.Registries[keys[j]].Name {
+				return config.Registries[keys[i]].Type < config.Registries[keys[j]].Type
+			}
+			return config.Registries[keys[i]].Name < config.Registries[keys[j]].Name
+		})
+
 		selected, err := ui.SelectFromList(cmd.Context(), "Select a registry to logout", keys)
 		if err != nil {
 			if err.Error() == "operation cancelled by user" {
