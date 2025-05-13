@@ -110,7 +110,6 @@ func LoginToRegistry(ctx context.Context, configPath string) error {
 
 	// Updated spinner handling to use the new ClearSpinner function
 	return ui.WithSpinner("Logging in to the selected registry", func() error {
-
 		if registry.Type == "aws" {
 			cmd := exec.CommandContext(ctx, "aws", "ecr", "get-login-password", "--region", registry.Region)
 			output, err := cmd.Output()
@@ -124,15 +123,26 @@ func LoginToRegistry(ctx context.Context, configPath string) error {
 				return err
 			}
 
-			// Ensure spinner is cleared before printing success message
 			ui.ClearSpinner()
 			ui.PrintSuccess("Successfully logged in to registry:", registry.Name)
 		} else if registry.Type == "helm" {
+			// Implement Helm registry login
+			cmd := exec.CommandContext(ctx, "aws", "ecr", "get-login-password", "--region", registry.Region)
+			output, err := cmd.Output()
+			if err != nil {
+				return err
+			}
+
+			loginCmd := exec.CommandContext(ctx, "helm", "registry", "login", registry.URL, "--username", "AWS", "--password", string(output))
+			if err := loginCmd.Run(); err != nil {
+				return err
+			}
+
 			ui.ClearSpinner()
-			ui.PrintInfo("Helm registry login is not implemented yet.", "")
+			ui.PrintSuccess("Successfully logged in to Helm registry:", registry.Name)
 		} else {
 			return fmt.Errorf("unsupported registry type: %s", registry.Type)
 		}
 		return nil
-	}, false)
+	}, true)
 }
