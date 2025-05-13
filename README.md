@@ -1,5 +1,5 @@
-# $PROJECT_NAME
+# auth-refresher
 
 Command description
 
-![demo](/demo/$PROJECT_NAME-demo.gif)
+![demo](/demo/auth-refresher-demo.gif)

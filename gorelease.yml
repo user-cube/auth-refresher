@@ -4,7 +4,7 @@
 
 version: 2
 
-project_name: $PROJECT_NAME
+project_name: auth-refresher
 
 before:
   hooks:
@@ -14,7 +14,7 @@ builds:
 - env:
   - CGO_ENABLED=0
   ldflags:
-  - -s -w -X github.com/user-cube/$PROJECT_NAME/cmd.Version={{ .Env.VERSION }} -X github.com/user-cube/$PROJECT_NAME/cmd.GitCommit={{ .Env.GIT_COMMIT }} -X github.com/user-cube/$PROJECT_NAME/cmd.BuildDate={{ .Env.BUILD_DATE }}
+  - -s -w -X github.com/user-cube/auth-refresher/cmd.Version={{ .Env.VERSION }} -X github.com/user-cube/auth-refresher/cmd.GitCommit={{ .Env.GIT_COMMIT }} -X github.com/user-cube/auth-refresher/cmd.BuildDate={{ .Env.BUILD_DATE }}
   goos:
   - linux
   - darwin
