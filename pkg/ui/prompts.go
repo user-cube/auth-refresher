@@ -79,7 +79,8 @@ func ConfirmWithContext(ctx context.Context, label string) (bool, error) {
 }
 
 // PromptInputWithContext prompts the user for text input with context support
-func PromptInputWithContext(ctx context.Context, label string, defaultValue string, validate promptui.ValidateFunc) (string, error) {
+// Add an optional `mask` parameter to enable masking sensitive input
+func PromptInputWithContext(ctx context.Context, label string, defaultValue string, validate promptui.ValidateFunc, mask bool) (string, error) {
 	resultChan := make(chan string, 1)
 	errorChan := make(chan error, 1)
 
@@ -88,6 +89,9 @@ func PromptInputWithContext(ctx context.Context, label string, defaultValue stri
 			Label:    label,
 			Default:  defaultValue,
 			Validate: validate,
+		}
+		if mask {
+			prompt.Mask = '*'
 		}
 		result, err := prompt.Run()
 		if err != nil {
@@ -105,4 +109,9 @@ func PromptInputWithContext(ctx context.Context, label string, defaultValue stri
 	case err := <-errorChan:
 		return "", err
 	}
+}
+
+// Updated `PromptInput` wrapper to include masking support
+func PromptInput(ctx context.Context, label string, mask bool) (string, error) {
+	return PromptInputWithContext(ctx, label, "", nil, mask)
 }

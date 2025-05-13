@@ -8,22 +8,26 @@ import (
 	"os/exec"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/user-cube/auth-refresher/pkg/ui"
 	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	CurrentRegistry string              `yaml:"current_registry"`
-	Name            string              `yaml:"name"`
+	CurrentRegistry string              `yaml:"last_used_registry"`
 	Registries      map[string]Registry `yaml:"registries"`
 }
 
 type Registry struct {
-	Name   string `yaml:"name"`
-	Type   string `yaml:"type"`
-	URL    string `yaml:"url"`
-	Region string `yaml:"region"`
+	Name       string `yaml:"name"`
+	Type       string `yaml:"type"`
+	URL        string `yaml:"url"`
+	Region     string `yaml:"region"`
+	Username   string `yaml:"username"`
+	Password   string `yaml:"password"`
+	LastLogin  string `yaml:"last_login"`  // Field to store the last login date
+	LastLogout string `yaml:"last_logout"` // Field to store the last logout date
 }
 
 // LoadConfig loads the configuration from the given file path
@@ -86,11 +90,17 @@ func LoginToRegistry(ctx context.Context, configPath string) error {
 		return err
 	}
 
+	// Ensure the current registry appears on top with extra info
+	currentRegistry := config.CurrentRegistry
 	var sortedOptions []string
 	for key, registry := range config.Registries {
-		sortedOptions = append(sortedOptions, key+"|"+registry.Type)
+		if key == currentRegistry {
+			sortedOptions = append([]string{key + " (last one used)|" + registry.Type}, sortedOptions...)
+		} else {
+			sortedOptions = append(sortedOptions, key+"|"+registry.Type)
+		}
 	}
-	sort.Strings(sortedOptions)
+	sort.Strings(sortedOptions[1:]) // Sort the rest of the options, excluding the first (current registry)
 
 	var options []string
 	for _, sortedOption := range sortedOptions {
@@ -106,11 +116,44 @@ func LoginToRegistry(ctx context.Context, configPath string) error {
 		return err
 	}
 
-	registry := config.Registries[selected]
+	// Strip the label '(last one used)' from the selected registry name
+	cleanedSelected := strings.TrimSuffix(selected, " (last one used)")
+	registry, exists := config.Registries[cleanedSelected]
+	if !exists {
+		return fmt.Errorf("registry '%s' not found in the configuration", cleanedSelected)
+	}
 
-	// Updated spinner handling to use the new ClearSpinner function
-	return ui.WithSpinner("Logging in to the selected registry", func() error {
-		if registry.Type == "aws" {
+	// Ensure the registry type is not empty
+	if registry.Type == "" {
+		return fmt.Errorf("registry '%s' has no type defined in the configuration", cleanedSelected)
+	}
+
+	// Validate the registry type before starting the spinner
+	if registry.Type != "aws" && registry.Type != "helm" && registry.Type != "docker" {
+		return fmt.Errorf("unsupported registry type: %s", registry.Type)
+	}
+
+	if registry.Type == "docker" {
+		password := registry.Password
+		if password == "" {
+			var err error
+			password, err = ui.PromptInput(ctx, "Enter your Docker password", true) // Enable masking for password input
+			if err != nil {
+				fmt.Println("Error reading password:", err)
+				return err
+			}
+		}
+		registry.Password = password // Update the registry object with the password
+	}
+
+	// Start the spinner after gathering necessary inputs
+	err = ui.WithSpinner("Logging in to the selected registry", func() error {
+		if registry.Type == "docker" {
+			loginCmd := exec.CommandContext(ctx, "docker", "login", "--username", registry.Username, "--password", registry.Password, registry.URL)
+			if err := loginCmd.Run(); err != nil {
+				return err
+			}
+		} else if registry.Type == "aws" {
 			cmd := exec.CommandContext(ctx, "aws", "ecr", "get-login-password", "--region", registry.Region)
 			output, err := cmd.Output()
 			if err != nil {
@@ -122,11 +165,7 @@ func LoginToRegistry(ctx context.Context, configPath string) error {
 			if err := loginCmd.Run(); err != nil {
 				return err
 			}
-
-			ui.ClearSpinner()
-			ui.PrintSuccess("Successfully logged in to registry:", registry.Name)
 		} else if registry.Type == "helm" {
-			// Implement Helm registry login
 			cmd := exec.CommandContext(ctx, "aws", "ecr", "get-login-password", "--region", registry.Region)
 			output, err := cmd.Output()
 			if err != nil {
@@ -137,12 +176,31 @@ func LoginToRegistry(ctx context.Context, configPath string) error {
 			if err := loginCmd.Run(); err != nil {
 				return err
 			}
-
-			ui.ClearSpinner()
-			ui.PrintSuccess("Successfully logged in to Helm registry:", registry.Name)
-		} else {
-			return fmt.Errorf("unsupported registry type: %s", registry.Type)
 		}
+		ui.ClearSpinner()
+		ui.PrintSuccess("Successfully logged in to registry:", registry.Name)
 		return nil
-	}, true)
+	}, false)
+	if err != nil {
+		return err
+	}
+
+	// Update the `last_used_registry` field in the configuration
+	config.CurrentRegistry = cleanedSelected
+	registry.LastLogin = time.Now().Format("2006-01-02 15:04:05") // Update the `LastLogin` field with the current date
+	config.Registries[cleanedSelected] = registry                 // Update the registry entry in the configuration
+
+	file, err = os.Create(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to open config file for writing: %w", err)
+	}
+	defer file.Close()
+
+	encoder := yaml.NewEncoder(file)
+	defer encoder.Close()
+	if err := encoder.Encode(&config); err != nil {
+		return fmt.Errorf("failed to write updated config: %w", err)
+	}
+
+	return nil
 }

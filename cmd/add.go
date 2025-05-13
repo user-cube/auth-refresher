@@ -47,33 +47,51 @@ var addCmd = &cobra.Command{
 			config.Registries = make(map[string]auth.Registry)
 		}
 
-		name, err := ui.PromptInputWithContext(ctx, "Registry Name", "", nil)
+		name, err := ui.PromptInputWithContext(ctx, "Registry Name", "", nil, false)
 		if err != nil {
 			return
 		}
 
 		// Updated registry type input to use a selection instead of free typing
-		typeOptions := []string{"aws", "helm"}
+		typeOptions := []string{"aws", "helm", "docker"}
 		typeInput, err := ui.SelectFromList(ctx, "Registry Type", typeOptions)
 		if err != nil {
 			return
 		}
 
-		url, err := ui.PromptInputWithContext(ctx, "Registry URL", "", nil)
+		url, err := ui.PromptInputWithContext(ctx, "Registry URL", "", nil, false)
 		if err != nil {
 			return
 		}
 
-		region, err := ui.PromptInputWithContext(ctx, "Registry Region", "", nil)
+		region, err := ui.PromptInputWithContext(ctx, "Registry Region", "", nil, false)
 		if err != nil {
 			return
 		}
 
-		config.Registries[name] = auth.Registry{
-			Name:   name,
-			Type:   typeInput,
-			URL:    url,
-			Region: region,
+		// Updated to prompt for username and store it in the registry configuration
+		username, err := ui.PromptInputWithContext(ctx, "Registry Username", "", nil, false)
+		if err != nil {
+			return
+		}
+
+		// Removed password prompt for Docker registries
+		if typeInput == "docker" {
+			config.Registries[name] = auth.Registry{
+				Name:     name,
+				Type:     typeInput,
+				URL:      url,
+				Region:   region,
+				Username: username, // Store only the username for Docker registries
+			}
+		} else {
+			config.Registries[name] = auth.Registry{
+				Name:     name,
+				Type:     typeInput,
+				URL:      url,
+				Region:   region,
+				Username: username,
+			}
 		}
 
 		file.Truncate(0)
